@@ -1,0 +1,16 @@
+{
+  "name": "gunung",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "GunungServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "src/client"
+      }
+    }
+  }
+}
