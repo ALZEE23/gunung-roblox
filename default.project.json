@@ -2,6 +2,12 @@
   "name": "gunung",
   "tree": {
     "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$path": "src/ReplicatedStorage",
+      "Packages": {
+        "$path": "Packages"
+      }
+    },
     "ServerScriptService": {
       "GunungServer": {
         "$path": "src/server"
