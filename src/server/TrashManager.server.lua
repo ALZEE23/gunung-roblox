@@ -93,6 +93,12 @@ TrashItemEvent.OnServerEvent:Connect(function(player, slot, trashBinName, quanti
     -- Add score
     AddScoreInternal:Fire(player, scoreGained)
     
+    -- 🔧 ADD: Update leaderboard
+    if _G.LeaderboardManager then
+        _G.LeaderboardManager.updateScore(player, scoreGained)
+        _G.LeaderboardManager.updateTrashed(player, quantity or 1)
+    end
+    
     -- Send success feedback
     TrashManager.CreateTrashSuccessEffect(player, item.name, scoreGained, trashConfig.name)
     

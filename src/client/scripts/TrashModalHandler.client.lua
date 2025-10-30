@@ -186,12 +186,19 @@ local function createTrashModal(trashBinName, trashConfig)
                     TrashItemEvent:FireServer(slot, trashBinName, 1)
                     print("[TrashModal] Fired TrashItem event")
                 end
+
+                if item.quantity and item.quantity > 1 then
+                    item.quantity = item.quantity - 1
+                    itemQuantity.Text = "Qty: " .. item.quantity .. " | Category: " .. item.category
+                else
+                    itemFrame:Destroy()
+                end
                 
                 -- Close modal
-                if currentModal then
-                    currentModal:Destroy()
-                    currentModal = nil
-                end
+                -- if currentModal then
+                --     currentModal:Destroy()
+                --     currentModal = nil
+                -- end
             end)
         end
     end

@@ -237,7 +237,7 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
     end
     
     quantity = quantity or 1
-    
+    local success = false    
     -- 🔍 FIRST: Check if item already exists in any slot (untuk stacking)
     for slot = 1, 3 do
         local existingItem = inventory.hotbar.items[slot]
@@ -246,7 +246,11 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
             existingItem.quantity = existingItem.quantity + quantity
             UpdateInventoryEvent:FireClient(player, inventory)
             createPickupNotification(player, itemData, true, "stacked") -- 🔧 ADD notification
+            success = true
             print("[InventoryManager] Stacked", quantity, itemData.name, "in slot", slot, "Total:", existingItem.quantity)
+            if success and _G.LeaderboardManager then
+                _G.LeaderboardManager.updateCollected(player, quantity)
+            end
             return true
         end
     end
@@ -263,10 +267,15 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
             }
             UpdateInventoryEvent:FireClient(player, inventory)
             createPickupNotification(player, itemData, true, "new") -- 🔧 ADD notification
+            success = true
             print("[InventoryManager] Added new", itemData.name, "to hotbar slot", slot)
+            if success and _G.LeaderboardManager then
+                _G.LeaderboardManager.updateCollected(player, quantity)
+            end
             return true
         end
     end
+
     
     -- 🔍 THIRD: Hotbar full, add to storage
     table.insert(inventory.storage, {
