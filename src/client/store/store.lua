@@ -1,11 +1,23 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage:WaitForChild("Packages")
 
-local rodux = require(Packages:FindFirstChild("roblox_rodux@4.0.0-rc.0") or Packages.Rodux)
+local rodux = require(Packages:FindFirstChild("roblox_rodux@3.0.0") or Packages.Rodux)
 
--- Wait for inventory events
-local InventoryEvents = ReplicatedStorage:WaitForChild("InventoryEvents")
-local UpdateInventoryEvent = InventoryEvents:WaitForChild("UpdateInventory")
+-- 🔧 FIX: Wait for InventoryEvents folder first
+local InventoryEvents = ReplicatedStorage:WaitForChild("InventoryEvents", 10)
+if not InventoryEvents then
+    warn("[Store] InventoryEvents folder not found after 10 seconds!")
+    return
+end
+
+-- Then wait for specific events
+local UpdateInventoryEvent = InventoryEvents:WaitForChild("UpdateInventory", 5)
+if not UpdateInventoryEvent then
+    warn("[Store] UpdateInventory event not found!")
+    return
+end
+
+print("[Store] Found required RemoteEvents")
 
 -- Function untuk load items dari ReplicatedStorage
 local function loadItemsFromStorage()

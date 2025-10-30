@@ -2,28 +2,59 @@ local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- 🔧 FIX: Create InventoryEvents folder dan RemoteEvents
+local InventoryEvents = ReplicatedStorage:FindFirstChild("InventoryEvents")
+if not InventoryEvents then
+    InventoryEvents = Instance.new("Folder")
+    InventoryEvents.Name = "InventoryEvents"
+    InventoryEvents.Parent = ReplicatedStorage
+end
+
+-- Create required RemoteEvents/Functions
+local GetInventoryFunction = InventoryEvents:FindFirstChild("GetInventory")
+if not GetInventoryFunction then
+    GetInventoryFunction = Instance.new("RemoteFunction")
+    GetInventoryFunction.Name = "GetInventory"
+    GetInventoryFunction.Parent = InventoryEvents
+end
+
+local AddItemEvent = InventoryEvents:FindFirstChild("AddItem")
+if not AddItemEvent then
+    AddItemEvent = Instance.new("RemoteEvent")
+    AddItemEvent.Name = "AddItem"
+    AddItemEvent.Parent = InventoryEvents
+end
+
+local UpdateInventoryEvent = InventoryEvents:FindFirstChild("UpdateInventory")
+if not UpdateInventoryEvent then
+    UpdateInventoryEvent = Instance.new("RemoteEvent")
+    UpdateInventoryEvent.Name = "UpdateInventory"
+    UpdateInventoryEvent.Parent = InventoryEvents
+end
+
+-- 🔧 FIX: Create TrashItem event for TrashManager
+local TrashItemEvent = InventoryEvents:FindFirstChild("TrashItem")
+if not TrashItemEvent then
+    TrashItemEvent = Instance.new("RemoteEvent")
+    TrashItemEvent.Name = "TrashItem"
+    TrashItemEvent.Parent = InventoryEvents
+end
+
+-- 🔧 FIX: Create ShowTrashModal event
+local ShowTrashModalEvent = InventoryEvents:FindFirstChild("ShowTrashModal")
+if not ShowTrashModalEvent then
+    ShowTrashModalEvent = Instance.new("RemoteEvent")
+    ShowTrashModalEvent.Name = "ShowTrashModal"
+    ShowTrashModalEvent.Parent = InventoryEvents
+end
+
+print("[InventoryManager] Created RemoteEvents:", InventoryEvents:GetChildren())
+
 -- Import ItemManager
 local ItemManager = require(script.Parent.ItemManager)
 
 -- DataStore setup
 local inventoryStore = DataStoreService:GetDataStore("PlayerInventory")
-
--- RemoteEvents
-local remoteEvents = Instance.new("Folder")
-remoteEvents.Name = "InventoryEvents"
-remoteEvents.Parent = ReplicatedStorage
-
-local UpdateInventoryEvent = Instance.new("RemoteEvent")
-UpdateInventoryEvent.Name = "UpdateInventory"
-UpdateInventoryEvent.Parent = remoteEvents
-
-local AddItemEvent = Instance.new("RemoteEvent")
-AddItemEvent.Name = "AddItem"
-AddItemEvent.Parent = remoteEvents
-
-local GetInventoryFunction = Instance.new("RemoteFunction")
-GetInventoryFunction.Name = "GetInventory"
-GetInventoryFunction.Parent = remoteEvents
 
 -- Storage
 local inventories = {}
@@ -119,33 +150,22 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
     
     quantity = quantity or 1
     
-    -- Try add to specific hotbar slot first
-    if targetSlot and targetSlot >= 1 and targetSlot <= 3 then
-        local existingItem = inventory.hotbar.items[targetSlot]
-        if not existingItem then
-            -- Empty slot
-            inventory.hotbar.items[targetSlot] = {
-                id = itemId,
-                name = itemData.name,
-                category = itemData.category,
-                quantity = quantity
-            }
-            UpdateInventoryEvent:FireClient(player, inventory)
-            print("[InventoryManager] Added", itemData.name, "to hotbar slot", targetSlot)
-            return true
-        elseif existingItem.id == itemId then
-            -- Stack same item
+    -- 🔍 FIRST: Check if item already exists in any slot (untuk stacking)
+    for slot = 1, 3 do
+        local existingItem = inventory.hotbar.items[slot]
+        if existingItem and existingItem.id == itemId then
+            -- Stack dengan item yang sama
             existingItem.quantity = existingItem.quantity + quantity
             UpdateInventoryEvent:FireClient(player, inventory)
-            print("[InventoryManager] Stacked", quantity, itemData.name, "in slot", targetSlot)
+            print("[InventoryManager] Stacked", quantity, itemData.name, "in slot", slot, "Total:", existingItem.quantity)
             return true
         end
     end
     
-    -- Try add to any empty hotbar slot
+    -- 🔍 SECOND: Find empty slot jika item belum ada
     for slot = 1, 3 do
-        local item = inventory.hotbar.items[slot]
-        if not item then
+        local existingItem = inventory.hotbar.items[slot]
+        if not existingItem then
             inventory.hotbar.items[slot] = {
                 id = itemId,
                 name = itemData.name,
@@ -153,17 +173,12 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
                 quantity = quantity
             }
             UpdateInventoryEvent:FireClient(player, inventory)
-            print("[InventoryManager] Added", itemData.name, "to hotbar slot", slot)
-            return true
-        elseif item.id == itemId then
-            item.quantity = item.quantity + quantity
-            UpdateInventoryEvent:FireClient(player, inventory)
-            print("[InventoryManager] Stacked", quantity, itemData.name, "in slot", slot)
+            print("[InventoryManager] Added new", itemData.name, "to hotbar slot", slot)
             return true
         end
     end
     
-    -- Add to storage if hotbar full
+    -- 🔍 THIRD: Hotbar full, add to storage
     table.insert(inventory.storage, {
         id = itemId,
         name = itemData.name,
@@ -172,7 +187,7 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
     })
     
     UpdateInventoryEvent:FireClient(player, inventory)
-    print("[InventoryManager] Added", itemData.name, "to storage")
+    print("[InventoryManager] Hotbar full! Added", itemData.name, "to storage")
     return true
 end
 
@@ -238,8 +253,11 @@ function InventoryManager.RemovePlayer(player)
 end
 
 -- RemoteEvent handlers
+-- Handle GetInventory RemoteFunction
 GetInventoryFunction.OnServerInvoke = function(player)
-    return InventoryManager.GetInventory(player)
+    local inventory = InventoryManager.GetInventory(player)
+    print("[InventoryManager] Sent inventory to client for", player.Name)
+    return inventory
 end
 
 AddItemEvent.OnServerEvent:Connect(function(player, itemId, quantity, slot)
@@ -254,5 +272,48 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     InventoryManager.RemovePlayer(player)
 end)
+
+-- 🔧 LISTEN untuk pickup dari ItemSpawner
+local ServerEvents = ReplicatedStorage:FindFirstChild("ServerEvents")
+if not ServerEvents then
+    ServerEvents = Instance.new("Folder")
+    ServerEvents.Name = "ServerEvents"
+    ServerEvents.Parent = ReplicatedStorage
+end
+
+local AddItemInternal = ServerEvents:FindFirstChild("AddItemInternal")
+if not AddItemInternal then
+    AddItemInternal = Instance.new("BindableEvent")
+    AddItemInternal.Name = "AddItemInternal"
+    AddItemInternal.Parent = ServerEvents
+end
+
+local RemoveItemInternal = Instance.new("BindableEvent")
+RemoveItemInternal.Name = "RemoveItemInternal"
+RemoveItemInternal.Parent = ServerEvents
+
+local GetInventoryInternal = Instance.new("BindableFunction")
+GetInventoryInternal.Name = "GetInventoryInternal"
+GetInventoryInternal.Parent = ServerEvents
+
+-- Listen untuk internal server pickup events
+AddItemInternal.Event:Connect(function(player, itemId, quantity)
+    print("[InventoryManager] Received internal pickup:", player.Name, itemId, quantity)
+    local success = InventoryManager.AddItem(player, itemId, quantity)
+    if success then
+        print("[InventoryManager] Successfully added", itemId, "to", player.Name, "inventory")
+    end
+end)
+
+RemoveItemInternal.Event:Connect(function(player, slot, quantity)
+    return InventoryManager.RemoveItem(player, slot, quantity)
+end)
+
+GetInventoryInternal.OnInvoke = function(player)
+    return InventoryManager.GetInventory(player)
+end
+
+print("[InventoryManager] Setup internal event listeners")
+print("[InventoryManager] InventoryManager ready with internal communication!")
 
 return InventoryManager

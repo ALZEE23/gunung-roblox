@@ -8,6 +8,7 @@ local roactRodux = require(Packages:FindFirstChild("roblox_roact-rodux@0.5.1") o
 local store = require(script.Parent.store.store)
 -- local Counter = require(script.Parent.components.Counter)
 local Hotbar = require(script.Parent.components.Hotbar)
+local ModalTrash = require(script.Parent.components.ModalTrash)
 
 -- Root App Component
 local function App()
@@ -16,7 +17,8 @@ local function App()
         ResetOnSpawn = false,
     }, {
         -- Counter = roact.createElement(Counter)
-        Hotbar = roact.createElement(Hotbar)
+        Hotbar = roact.createElement(Hotbar),
+        ModalTrash = roact.createElement(ModalTrash)
     })
 end
 

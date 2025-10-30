@@ -229,54 +229,50 @@ function ItemSpawner.spawnRandomItem()
         if humanoid then
             local player = game.Players:GetPlayerFromCharacter(hit.Parent)
             if player then
-                -- 🔧 FIX: Call InventoryManager directly on server
+                -- 🔧 FIX: Use RemoteEvent instead of requiring InventoryManager
                 local InventoryEvents = ReplicatedStorage:FindFirstChild("InventoryEvents")
                 if InventoryEvents then
-                    local UpdateInventoryEvent = InventoryEvents:FindFirstChild("UpdateInventory")
-                    if UpdateInventoryEvent then
-                        -- Send updated inventory to client
-                        -- But first, we need to add item on server side
+                    local AddItemEvent = InventoryEvents:FindFirstChild("AddItem")
+                    if AddItemEvent then
+                        -- Fire to InventoryManager (server script akan handle ini)
+                        -- Tapi ini pickup dari server, jadi kita simulate player action
                         
-                        -- 🔧 SIMPLE FIX: Just add to player's leaderstats or handle pickup differently
+                        -- 🔧 SIMPLE SOLUTION: Call InventoryManager function via BindableEvent
+                        local ServerEvents = ReplicatedStorage:FindFirstChild("ServerEvents") 
+                        if not ServerEvents then
+                            ServerEvents = Instance.new("Folder")
+                            ServerEvents.Name = "ServerEvents"
+                            ServerEvents.Parent = ReplicatedStorage
+                        end
+                        
+                        local AddItemInternal = ServerEvents:FindFirstChild("AddItemInternal")
+                        if not AddItemInternal then
+                            AddItemInternal = Instance.new("BindableEvent")
+                            AddItemInternal.Name = "AddItemInternal"
+                            AddItemInternal.Parent = ServerEvents
+                        end
+                        
+                        -- Fire internal event yang InventoryManager bisa listen
+                        AddItemInternal:Fire(player, randomItemId, 1)
+                        
                         print("[ItemSpawner] Player", player.Name, "picked up", randomItemId)
                         
-                        -- Create simple pickup effect
-                        local pickupGui = Instance.new("ScreenGui")
-                        pickupGui.Name = "PickupNotification"
-                        pickupGui.Parent = player.PlayerGui
+                        -- Remove from spawned items
+                        for i, spawned in pairs(spawnedItems) do
+                            if spawned.model == itemModel then
+                                spawned.cleanup()
+                                table.remove(spawnedItems, i)
+                                break
+                            end
+                        end
                         
-                        local frame = Instance.new("Frame")
-                        frame.Size = UDim2.new(0, 200, 0, 50)
-                        frame.Position = UDim2.new(0.5, -100, 0, 50)
-                        frame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-                        frame.Parent = pickupGui
-                        
-                        local label = Instance.new("TextLabel")
-                        label.Size = UDim2.new(1, 0, 1, 0)
-                        label.Text = "Picked up: " .. randomItemId
-                        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        label.BackgroundTransparency = 1
-                        label.Parent = frame
-                        
-                        -- Auto remove notification
-                        game:GetService("Debris"):AddItem(pickupGui, 2)
+                        -- Cleanup
+                        pickupConnection:Disconnect()
+                        floatTween:Cancel()
+                        rotateTween:Cancel()
+                        itemModel:Destroy()
                     end
                 end
-                
-                -- Remove from spawned items
-                for i, spawned in pairs(spawnedItems) do
-                    if spawned.model == itemModel then
-                        spawned.cleanup()
-                        table.remove(spawnedItems, i)
-                        break
-                    end
-                end
-                
-                -- Cleanup
-                pickupConnection:Disconnect()
-                floatTween:Cancel()
-                rotateTween:Cancel()
-                itemModel:Destroy()
             end
         end
     end)

@@ -3,20 +3,37 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "$path": "src/ReplicatedStorage",
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
       "Packages": {
         "$path": "Packages"
       }
     },
     "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
       "GunungServer": {
         "$path": "src/server"
       }
     },
     "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$ignoreUnknownInstances": true,
       "StarterPlayerScripts": {
-        "$path": "src/client"
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "GunungClient": {
+          "$path": "src/client"
+        }
       }
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$ignoreUnknownInstances": true
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "$ignoreUnknownInstances": true
     }
   }
 }
