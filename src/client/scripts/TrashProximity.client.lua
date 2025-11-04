@@ -80,7 +80,7 @@ local function checkProximity()
                     if firstPart then
                         trashPosition = firstPart.Position
                     else
-                        warn("[TrashProximity] No parts found in model:", obj.Name)
+                        -- warn("[TrashProximity] No parts found in model:", obj.Name)
                         continue -- Skip this object
                     end
                 end
