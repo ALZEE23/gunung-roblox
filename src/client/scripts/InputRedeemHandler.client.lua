@@ -253,7 +253,7 @@ local function createInputModal()
     textBox:GetPropertyChangedSignal("Text"):Connect(updateSubmitButton)
     updateSubmitButton() -- Initial state
     
-    -- Submit functionality
+    -- Submit functionality (UPDATE dengan enhanced debugging)
     local function submitCode()
         local code = textBox.Text:gsub("%s+", ""):upper() -- Clean and uppercase
         
@@ -262,21 +262,47 @@ local function createInputModal()
             return
         end
         
-        print("[InputRedeem] Submitting code:", code)
+        print("[InputRedeem] 🚀 Submitting code:", code)
         
         -- Disable button temporarily
         submitButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         submitButton.Text = "Processing..."
         
+        -- 🔍 DEBUG: Check if InventoryEvents exists
+        local InventoryEvents = ReplicatedStorage:FindFirstChild("InventoryEvents")
+        if not InventoryEvents then
+            warn("[InputRedeem] ❌ InventoryEvents not found in ReplicatedStorage!")
+            showErrorMessage("System error - InventoryEvents missing!")
+            wait(1)
+            updateSubmitButton()
+            return
+        end
+        
+        print("[InputRedeem] ✅ Found InventoryEvents")
+        
+        -- 🔍 DEBUG: Check if RedeemCode event exists
+        local RedeemCodeEvent = InventoryEvents:FindFirstChild("RedeemCode")
+        if not RedeemCodeEvent then
+            warn("[InputRedeem] ❌ RedeemCode event not found!")
+            showErrorMessage("System error - RedeemCode event missing!")
+            wait(1)
+            updateSubmitButton()
+            return
+        end
+        
+        print("[InputRedeem] ✅ Found RedeemCode event")
+        print("[InputRedeem] 📡 Firing RedeemCode event with code:", code)
+        
         -- Send to server
-        local RedeemCodeEvent = ReplicatedStorage:FindFirstChild("InventoryEvents"):FindFirstChild("RedeemCode")
-        if RedeemCodeEvent then
+        local success = pcall(function()
             RedeemCodeEvent:FireServer(code)
+        end)
+        
+        if success then
+            print("[InputRedeem] ✅ Successfully fired RedeemCode event")
         else
-            warn("[InputRedeem] RedeemCode event not found!")
-            showErrorMessage("System error - please try again!")
-            
-            -- Re-enable button
+            warn("[InputRedeem] ❌ Failed to fire RedeemCode event")
+            showErrorMessage("Failed to send request to server!")
             wait(1)
             updateSubmitButton()
         end

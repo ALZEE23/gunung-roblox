@@ -99,48 +99,48 @@ function ItemSpawner.spawnRandomItem()
     end
     
     -- 🔍 DEBUG: Check ItemManager
-    print("[ItemSpawner] Checking ItemManager...")
-    print("[ItemSpawner] ItemManager:", ItemManager)
+    -- print("[ItemSpawner] Checking ItemManager...")
+    -- print("[ItemSpawner] ItemManager:", ItemManager)
     
     if ItemManager.getAllItems then
-        print("[ItemSpawner] getAllItems function exists")
+        -- print("[ItemSpawner] getAllItems function exists")
         local allItems = ItemManager.getAllItems()
-        print("[ItemSpawner] getAllItems returned:", allItems)
+        -- print("[ItemSpawner] getAllItems returned:", allItems)
         
         for itemId, itemData in pairs(allItems) do
-            print("[ItemSpawner] Found item:", itemId, itemData)
+            -- print("[ItemSpawner] Found item:", itemId, itemData)
         end
     else
-        print("[ItemSpawner] ERROR: getAllItems function missing!")
+        -- print("[ItemSpawner] ERROR: getAllItems function missing!")
         
         -- 🔧 FALLBACK: Load items directly dari ReplicatedStorage
         local itemsFolder = ReplicatedStorage:FindFirstChild("Items")
         if itemsFolder then
-            print("[ItemSpawner] Found Items folder, loading directly...")
+            -- print("[ItemSpawner] Found Items folder, loading directly...")
             
             local categories = {"Organic", "Anorganic", "Campuran"}
             for _, category in pairs(categories) do
                 local categoryFolder = itemsFolder:FindFirstChild(category)
                 if categoryFolder then
-                    print("[ItemSpawner] Found category:", category)
+                    -- print("[ItemSpawner] Found category:", category)
                     for _, item in pairs(categoryFolder:GetChildren()) do
                         if item:IsA("MeshPart") then
-                            print("[ItemSpawner] Found meshpart:", item.Name)
-                            
+                            -- print("[ItemSpawner] Found meshpart:", item.Name)
+
                             -- Spawn dummy item langsung
                             local spawnedItem = item:Clone()
                             spawnedItem.Name = item.Name .. "_Spawned"
                             spawnedItem.Position = spawnPos
                             spawnedItem.Parent = workspace
                             
-                            print("[ItemSpawner] Spawned dummy:", item.Name, "at", spawnPos)
+                            -- print("[ItemSpawner] Spawned dummy:", item.Name, "at", spawnPos)
                             return -- Exit after spawning 1 item
                         end
                     end
                 end
             end
         else
-            print("[ItemSpawner] ERROR: Items folder not found in ReplicatedStorage!")
+            -- print("[ItemSpawner] ERROR: Items folder not found in ReplicatedStorage!")
         end
         return
     end
@@ -255,7 +255,7 @@ function ItemSpawner.spawnRandomItem()
                         -- Fire internal event yang InventoryManager bisa listen
                         AddItemInternal:Fire(player, randomItemId, 1)
                         
-                        print("[ItemSpawner] Player", player.Name, "picked up", randomItemId)
+                        -- print("[ItemSpawner] Player", player.Name, "picked up", randomItemId)
                         
                         -- Remove from spawned items
                         for i, spawned in pairs(spawnedItems) do
@@ -295,7 +295,7 @@ function ItemSpawner.spawnRandomItem()
     }
     
     table.insert(spawnedItems, spawnedItemData)
-    print("[ItemSpawner] Spawned", randomItemId, "at", spawnPos)
+    -- print("[ItemSpawner] Spawned", randomItemId, "at", spawnPos)
 end
 
 -- Function untuk cleanup expired items
@@ -305,7 +305,7 @@ function ItemSpawner.cleanupExpiredItems()
     for i = #spawnedItems, 1, -1 do
         local itemData = spawnedItems[i]
         if currentTime - itemData.spawnTime > SPAWN_CONFIG.despawnTime then
-            print("[ItemSpawner] Despawning expired item:", itemData.itemId)
+            -- print("[ItemSpawner] Despawning expired item:", itemData.itemId)
             itemData.cleanup()
             table.remove(spawnedItems, i)
         end

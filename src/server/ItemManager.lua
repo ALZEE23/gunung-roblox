@@ -5,21 +5,21 @@ local ItemService = {}
 function ItemService.getItemsByCategory(category)
     local ItemsFolder = ReplicatedStorage:FindFirstChild("Items")
     if not ItemsFolder then 
-        print("[ItemManager] Items folder not found!")
+        -- print("[ItemManager] Items folder not found!")
         return {} 
     end
     
     local categoryFolder = ItemsFolder:FindFirstChild(category)
     if not categoryFolder then 
-        print("[ItemManager] Category folder not found:", category)
+        -- print("[ItemManager] Category folder not found:", category)
         return {} 
     end
     
-    print("[ItemManager] Scanning category:", category)
+    -- print("[ItemManager] Scanning category:", category)
     
     local items = {}
     for _, itemModel in ipairs(categoryFolder:GetChildren()) do
-        print("[ItemManager] Found child:", itemModel.Name, "Type:", itemModel.ClassName)
+        -- print("[ItemManager] Found child:", itemModel.Name, "Type:", itemModel.ClassName)
         
         -- 🔧 FIX: Check for MeshPart instead of Model
         if itemModel:IsA("MeshPart") or itemModel:IsA("Part") or itemModel:IsA("Model") then
@@ -31,12 +31,12 @@ function ItemService.getItemsByCategory(category)
                 value = itemModel:FindFirstChild("Value") and itemModel.Value.Value or 0,
             }
             
-            print("[ItemManager] Added item:", itemData.id, "from category:", category)
+            -- print("[ItemManager] Added item:", itemData.id, "from category:", category)
             table.insert(items, itemData)
         end
     end
     
-    print("[ItemManager] Total items in", category, ":", #items)
+    -- print("[ItemManager] Total items in", category, ":", #items)
     return items
 end
 

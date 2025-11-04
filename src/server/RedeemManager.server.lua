@@ -2,6 +2,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
+print("[RedeemManager] 🚀 RedeemManager starting...")
+
 local RedeemManager = {}
 
 -- 💾 DataStore untuk tracking redeem
@@ -39,7 +41,12 @@ local REDEEM_CONFIG = {
 }
 
 -- 🎯 Create RemoteEvents first
-local InventoryEvents = ReplicatedStorage:WaitForChild("InventoryEvents")
+local InventoryEvents = ReplicatedStorage:FindFirstChild("InventoryEvents")
+if not InventoryEvents then
+    InventoryEvents = Instance.new("Folder")
+    InventoryEvents.Name = "InventoryEvents"
+    InventoryEvents.Parent = ReplicatedStorage
+end
 
 local UpdateRedeemIconEvent = Instance.new("RemoteEvent")
 UpdateRedeemIconEvent.Name = "UpdateRedeemIcon"
@@ -56,6 +63,99 @@ ProcessRedeemEvent.Parent = InventoryEvents
 local ShowRedeemModalEvent = Instance.new("RemoteEvent")
 ShowRedeemModalEvent.Name = "ShowRedeemModal"
 ShowRedeemModalEvent.Parent = InventoryEvents
+
+-- 🔧 ADD: Create RedeemCode event for external API
+local RedeemCodeEvent = InventoryEvents:FindFirstChild("RedeemCode")
+if not RedeemCodeEvent then
+    RedeemCodeEvent = Instance.new("RemoteEvent")
+    RedeemCodeEvent.Name = "RedeemCode"
+    RedeemCodeEvent.Parent = InventoryEvents
+end
+
+local RedeemCodeResponseEvent = InventoryEvents:FindFirstChild("RedeemCodeResponse")
+if not RedeemCodeResponseEvent then
+    RedeemCodeResponseEvent = Instance.new("RemoteEvent")
+    RedeemCodeResponseEvent.Name = "RedeemCodeResponse"
+    RedeemCodeResponseEvent.Parent = InventoryEvents
+end
+
+print("[RedeemManager] ✅ Events created")
+
+-- Wait for ExternalRedeemService
+print("[RedeemManager] ⏳ Waiting for ExternalRedeemService...")
+local ExternalRedeemService = nil
+local maxWait = 0
+while not ExternalRedeemService and maxWait < 50 do
+    ExternalRedeemService = _G.ExternalRedeemService
+    if ExternalRedeemService then
+        print("[RedeemManager] ✅ Found ExternalRedeemService!")
+        break
+    end
+    wait(0.1)
+    maxWait = maxWait + 1
+end
+
+if not ExternalRedeemService then
+    warn("[RedeemManager] ❌ ExternalRedeemService NOT FOUND after 5 seconds!")
+    warn("[RedeemManager] ❌ Check if ExternalRedeemService.server.lua is running!")
+end
+
+-- Handle requests with enhanced debugging
+RedeemCodeEvent.OnServerEvent:Connect(function(player, code)
+    print("[RedeemManager] 📨 SERVER RECEIVED REQUEST from", player.Name, "code:", code)
+    print("[RedeemManager] 🔍 ExternalRedeemService exists:", ExternalRedeemService ~= nil)
+    
+    if not ExternalRedeemService then
+        warn("[RedeemManager] ❌ ExternalRedeemService is nil - sending error response")
+        RedeemCodeResponseEvent:FireClient(player, false, "ExternalRedeemService not available")
+        return
+    end
+    
+    print("[RedeemManager] 🔍 processRedeemCode function exists:", ExternalRedeemService.processRedeemCode ~= nil)
+    
+    if not ExternalRedeemService.processRedeemCode then
+        warn("[RedeemManager] ❌ processRedeemCode function missing")
+        RedeemCodeResponseEvent:FireClient(player, false, "processRedeemCode function not found")
+        return
+    end
+    
+    print("[RedeemManager] 🚀 CALLING ExternalRedeemService.processRedeemCode...")
+    
+    local success, result = pcall(function()
+        return ExternalRedeemService.processRedeemCode(player, code)
+    end)
+    
+    print("[RedeemManager] 📊 processRedeemCode finished - success:", success)
+    
+    if success then
+        print("[RedeemManager] 📊 Result:", result)
+        -- Send response
+        RedeemCodeResponseEvent:FireClient(player, result, "Processed", {})
+    else
+        warn("[RedeemManager] ❌ processRedeemCode ERROR:", result)
+        RedeemCodeResponseEvent:FireClient(player, false, "Error: " .. tostring(result))
+    end
+end)
+
+print("[RedeemManager] ✅ RedeemManager initialized and listening...")
+
+-- 🌐 Handle external redeem code input
+RedeemCodeEvent.OnServerEvent:Connect(function(player, code)
+    print("[RedeemManager] External redeem request from", player.Name, "for code:", code)
+    
+    -- Use ExternalRedeemService if available
+    if _G.ExternalRedeemService then
+        local success, message, rewards = _G.ExternalRedeemService.processRedeemCode(player, code)
+        
+        -- Send response back to client
+        RedeemCodeResponseEvent:FireClient(player, success, message, rewards)
+        
+        print("[RedeemManager] Sent external redeem response to", player.Name, "- Success:", success)
+    else
+        warn("[RedeemManager] ExternalRedeemService not found!")
+        RedeemCodeResponseEvent:FireClient(player, false, "External redeem service not available")
+    end
+end)
 
 -- 🔍 Find model in workspace or ServerStorage
 local function findOutfitModel(modelName)
