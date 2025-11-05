@@ -254,23 +254,51 @@ function ItemSpawner.spawnRandomItem()
                         
                         -- Fire internal event yang InventoryManager bisa listen
                         AddItemInternal:Fire(player, randomItemId, 1)
-                        
-                        -- print("[ItemSpawner] Player", player.Name, "picked up", randomItemId)
-                        
-                        -- Remove from spawned items
-                        for i, spawned in pairs(spawnedItems) do
-                            if spawned.model == itemModel then
-                                spawned.cleanup()
-                                table.remove(spawnedItems, i)
-                                break
+
+                        -- 🔧 ADD: Wait for response
+                        wait(0.1) -- Small delay for processing
+
+                        -- Check if item was actually added
+                        local GetInventoryInternal = ServerEvents and ServerEvents:FindFirstChild("GetInventoryInternal")
+
+                        if GetInventoryInternal then
+                            local inventory = GetInventoryInternal:Invoke(player)
+                            
+                            -- Check if item exists in inventory
+                            local itemAdded = false
+                            
+                            if inventory and inventory.hotbar then
+                                for slot = 1, 3 do
+                                    local item = inventory.hotbar.items[slot]
+                                    if item and item.id == randomItemId then
+                                        itemAdded = true
+                                        break
+                                    end
+                                end
+                            end
+                            
+                            -- Only remove item if it was added
+                            if itemAdded then
+                                print("[ItemSpawner] Player", player.Name, "picked up", randomItemId)
+                                
+                                -- Remove from spawned items
+                                for i, spawned in pairs(spawnedItems) do
+                                    if spawned.model == itemModel then
+                                        spawned.cleanup()
+                                        table.remove(spawnedItems, i)
+                                        break
+                                    end
+                                end
+                                
+                                -- Cleanup
+                                pickupConnection:Disconnect()
+                                floatTween:Cancel()
+                                rotateTween:Cancel()
+                                itemModel:Destroy()
+                            else
+                                print("[ItemSpawner] Item NOT added to inventory - stays on map")
                             end
                         end
-                        
-                        -- Cleanup
-                        pickupConnection:Disconnect()
-                        floatTween:Cancel()
-                        rotateTween:Cancel()
-                        itemModel:Destroy()
                     end
                 end
             end

@@ -47,6 +47,7 @@ local function createTrashModal(trashBinName, trashConfig)
     currentModal = Instance.new("ScreenGui")
     currentModal.Name = "TrashModal"
     currentModal.Parent = player.PlayerGui
+    currentModal.IgnoreGuiInset = true
     
     -- Background
     local background = Instance.new("Frame")

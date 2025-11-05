@@ -95,7 +95,7 @@ local function createPickupNotification(player, item, success, reason)
     
     local icon = Instance.new("TextLabel")
     icon.Size = UDim2.new(0, 50, 1, 0)
-    icon.Text = success and "📦" or "📦"  -- Always show pickup icon
+    icon.Text = success and "✅" or "❌"
     icon.TextColor3 = Color3.fromRGB(255, 255, 255)
     icon.BackgroundTransparency = 1
     icon.TextScaled = true
@@ -106,14 +106,15 @@ local function createPickupNotification(player, item, success, reason)
     text.Size = UDim2.new(1, -60, 0.6, 0)
     text.Position = UDim2.new(0, 55, 0, 5)
     
-    -- 🔧 FIXED: Better text based on success and reason
     if success then
         text.Text = "Picked up: " .. (item.name or item.id)
     else
-        if reason == "storage" then
-            text.Text = "Hotbar full → Storage: " .. (item.name or item.id)
+        if reason == "different_category" then
+            text.Text = "Hotbar Full!"
+        elseif reason == "storage" then
+            text.Text = "Hotbar full → Storage"
         else
-            text.Text = "Picked up: " .. (item.name or item.id)
+            text.Text = "Cannot pickup"
         end
     end
     
@@ -124,7 +125,6 @@ local function createPickupNotification(player, item, success, reason)
     text.TextXAlignment = Enum.TextXAlignment.Left
     text.Parent = frame
     
-    -- 🔧 FIXED: Better subtitle
     local subtitle = Instance.new("TextLabel")
     subtitle.Size = UDim2.new(1, -60, 0.4, 0)
     subtitle.Position = UDim2.new(0, 55, 0.6, 0)
@@ -141,17 +141,14 @@ local function createPickupNotification(player, item, success, reason)
         elseif reason == "new" then
             subtitle.Text = "Added to hotbar"
             subtitle.TextColor3 = Color3.fromRGB(200, 255, 200)
-        else
-            subtitle.Text = "Quantity: " .. (item.quantity or 1)
-            subtitle.TextColor3 = Color3.fromRGB(200, 255, 200)
         end
     else
-        if reason == "storage" then
+        if reason == "different_category" then
+            subtitle.Text = "Drop item to pickup new type!"
+            subtitle.TextColor3 = Color3.fromRGB(255, 200, 200)
+        elseif reason == "storage" then
             subtitle.Text = "Check storage later!"
             subtitle.TextColor3 = Color3.fromRGB(255, 255, 150)
-        else
-            subtitle.Text = "Truly inventory full!"
-            subtitle.TextColor3 = Color3.fromRGB(255, 200, 200)
         end
     end
     
@@ -237,7 +234,8 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
     end
     
     quantity = quantity or 1
-    local success = false    
+    local success = false
+    
     -- 🔍 FIRST: Check if item already exists in any slot (untuk stacking)
     for slot = 1, 3 do
         local existingItem = inventory.hotbar.items[slot]
@@ -245,7 +243,7 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
             -- Stack dengan item yang sama
             existingItem.quantity = existingItem.quantity + quantity
             UpdateInventoryEvent:FireClient(player, inventory)
-            createPickupNotification(player, itemData, true, "stacked") -- 🔧 ADD notification
+            createPickupNotification(player, itemData, true, "stacked")
             success = true
             print("[InventoryManager] Stacked", quantity, itemData.name, "in slot", slot, "Total:", existingItem.quantity)
             if success and _G.LeaderboardManager then
@@ -266,7 +264,7 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
                 quantity = quantity
             }
             UpdateInventoryEvent:FireClient(player, inventory)
-            createPickupNotification(player, itemData, true, "new") -- 🔧 ADD notification
+            createPickupNotification(player, itemData, true, "new")
             success = true
             print("[InventoryManager] Added new", itemData.name, "to hotbar slot", slot)
             if success and _G.LeaderboardManager then
@@ -275,9 +273,31 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
             return true
         end
     end
-
     
-    -- 🔍 THIRD: Hotbar full, add to storage
+    -- 🔧 NEW: Check if hotbar full with 3 different categories
+    local categories = {}
+    for slot = 1, 3 do
+        local slotItem = inventory.hotbar.items[slot]
+        if slotItem then
+            categories[slotItem.category] = true
+        end
+    end
+    
+    -- Count unique categories
+    local categoryCount = 0
+    for _ in pairs(categories) do
+        categoryCount = categoryCount + 1
+    end
+    
+    -- If 3 different categories and new item is different category
+    if categoryCount >= 3 and not categories[itemData.category] then
+        -- REJECT pickup
+        createPickupNotification(player, itemData, false, "different_category")
+        print("[InventoryManager] ❌ Cannot pickup - hotbar full with 3 different categories")
+        return false -- ❌ Return FALSE so item stays on map
+    end
+    
+    -- 🔍 THIRD: Hotbar full but same category, add to storage
     table.insert(inventory.storage, {
         id = itemId,
         name = itemData.name,
@@ -286,7 +306,7 @@ function InventoryManager.AddItem(player, itemId, quantity, targetSlot)
     })
     
     UpdateInventoryEvent:FireClient(player, inventory)
-    createPickupNotification(player, itemData, false, "storage") -- 🔧 ADD notification
+    createPickupNotification(player, itemData, false, "storage")
     print("[InventoryManager] Hotbar full! Added", itemData.name, "to storage")
     return true
 end

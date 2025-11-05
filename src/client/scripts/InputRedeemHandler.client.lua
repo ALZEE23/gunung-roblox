@@ -87,6 +87,7 @@ local function createInputModal()
     currentInputModal.Name = "RedeemCodeModal"
     currentInputModal.ResetOnSpawn = false
     currentInputModal.Parent = player.PlayerGui
+    currentInputModal.IgnoreGuiInset = true
     
     -- Background overlay
     local background = Instance.new("Frame")
@@ -344,18 +345,21 @@ local function createRedeemCodeButton()
     redeemCodeButton.Name = "RedeemCodeButton"
     redeemCodeButton.ResetOnSpawn = false
     redeemCodeButton.Parent = player.PlayerGui
+    redeemCodeButton.IgnoreGuiInset = true
     
     local buttonFrame = Instance.new("TextButton")
     buttonFrame.Size = UDim2.new(0, 140, 0, 40)
-    buttonFrame.Position = UDim2.new(1, -150, 0, 200) -- Below redeem icon
-    buttonFrame.Text = "📝 Redeem Code"
+    buttonFrame.Position = UDim2.new(1, -150, 0, 10) -- Below redeem icon
+    buttonFrame.Text = "Redeem Code"
+    buttonFrame.TextSize = 18
     buttonFrame.TextColor3 = Color3.fromRGB(255, 255, 255)
     buttonFrame.BackgroundColor3 = Color3.fromRGB(100, 50, 200) -- Purple
     buttonFrame.TextScaled = true
-    buttonFrame.Font = Enum.Font.SourceSansBold
+    buttonFrame.Font = Enum.Font.SourceSansLight
     buttonFrame.BorderSizePixel = 0
     buttonFrame.Parent = redeemCodeButton
-    
+
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = buttonFrame
