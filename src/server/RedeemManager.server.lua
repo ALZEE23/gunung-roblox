@@ -4,6 +4,13 @@ local DataStoreService = game:GetService("DataStoreService")
 
 print("[RedeemManager] 🚀 RedeemManager starting...")
 
+-- Prevent double initialization
+if _G.RedeemManagerInitialized then
+    warn("[RedeemManager] ⚠️ Already initialized, skipping...")
+    return
+end
+_G.RedeemManagerInitialized = true
+
 local RedeemManager = {}
 
 -- 💾 DataStore untuk tracking redeem
@@ -70,10 +77,21 @@ if not RedeemCodeEvent then
     RedeemCodeEvent = Instance.new("RemoteEvent")
     RedeemCodeEvent.Name = "RedeemCode"
     RedeemCodeEvent.Parent = InventoryEvents
+else
+    -- Clear existing connections to prevent double firing
+    RedeemCodeEvent:Destroy()
+    RedeemCodeEvent = Instance.new("RemoteEvent")
+    RedeemCodeEvent.Name = "RedeemCode"
+    RedeemCodeEvent.Parent = InventoryEvents
 end
 
 local RedeemCodeResponseEvent = InventoryEvents:FindFirstChild("RedeemCodeResponse")
 if not RedeemCodeResponseEvent then
+    RedeemCodeResponseEvent = Instance.new("RemoteEvent")
+    RedeemCodeResponseEvent.Name = "RedeemCodeResponse"
+    RedeemCodeResponseEvent.Parent = InventoryEvents
+else
+    RedeemCodeResponseEvent:Destroy()
     RedeemCodeResponseEvent = Instance.new("RemoteEvent")
     RedeemCodeResponseEvent.Name = "RedeemCodeResponse"
     RedeemCodeResponseEvent.Parent = InventoryEvents

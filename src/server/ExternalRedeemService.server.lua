@@ -1,6 +1,8 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService = game:GetService("DataStoreService")
+local OutfitDataStore = DataStoreService:GetDataStore("PlayerOutfits")
 
 local ExternalRedeemService = {}
 
@@ -78,11 +80,10 @@ local function extractClothingFromModel(model)
     
     for _, child in pairs(character:GetChildren()) do
         if child:IsA("Accessory") then
-            print("[ExternalRedeem] 🎩 Found accessory:", child.Name)
+
             
             local handle = child:FindFirstChild("Handle")
             if handle then
-                print("[ExternalRedeem]   └─ Handle type:", handle.ClassName)
                 
                 local accessoryData = {
                     name = child.Name,
@@ -96,13 +97,11 @@ local function extractClothingFromModel(model)
                     accessoryData.meshId = handle.MeshId
                     accessoryData.textureId = handle.TextureID
                     accessoryData.size = handle.Size
-                    print("[ExternalRedeem]   └─ Handle is MeshPart")
-                    print("[ExternalRedeem]   └─ MeshId:", handle.MeshId)
-                    print("[ExternalRedeem]   └─ TextureId:", handle.TextureID)
+                    
                     
                 elseif handle:IsA("Part") then
                     -- Handle adalah Part, check children untuk mesh
-                    print("[ExternalRedeem]   └─ Handle is Part, checking children...")
+                    
                     
                     -- Check for SpecialMesh
                     local specialMesh = handle:FindFirstChildOfClass("SpecialMesh")
@@ -112,9 +111,7 @@ local function extractClothingFromModel(model)
                         accessoryData.textureId = specialMesh.TextureId
                         accessoryData.scale = specialMesh.Scale
                         accessoryData.meshType = specialMesh.MeshType
-                        print("[ExternalRedeem]   └─ Found SpecialMesh")
-                        print("[ExternalRedeem]   └─ MeshId:", specialMesh.MeshId)
-                        print("[ExternalRedeem]   └─ TextureId:", specialMesh.TextureId)
+                        
                     end
                     
                     -- Check for MeshPart as child
@@ -124,9 +121,7 @@ local function extractClothingFromModel(model)
                         accessoryData.meshId = meshPart.MeshId
                         accessoryData.textureId = meshPart.TextureID
                         accessoryData.size = meshPart.Size
-                        print("[ExternalRedeem]   └─ Found MeshPart child")
-                        print("[ExternalRedeem]   └─ MeshId:", meshPart.MeshId)
-                        print("[ExternalRedeem]   └─ TextureId:", meshPart.TextureID)
+                       
                     end
                     
                     -- Store Part properties
@@ -140,13 +135,13 @@ local function extractClothingFromModel(model)
                     accessoryData.attachmentName = attachment.Name
                     accessoryData.attachmentPosition = attachment.Position
                     accessoryData.attachmentOrientation = attachment.Orientation
-                    print("[ExternalRedeem]   └─ Attachment:", attachment.Name)
+                  
                 end
                 
                 -- Only add if we found mesh data
                 if accessoryData.meshId or accessoryData.handleType == "MeshPart" then
                     table.insert(clothing.accessories, accessoryData)
-                    print("[ExternalRedeem] ✅ Extracted accessory:", child.Name)
+                    
                 else
                     warn("[ExternalRedeem]   └─ No mesh data found, skipping")
                 end
@@ -187,7 +182,6 @@ local function applyClothingToPlayer(player, clothing)
         local newShirt = Instance.new("Shirt")
         newShirt.ShirtTemplate = clothing.shirt.shirtTemplate
         newShirt.Parent = character
-        print("[ExternalRedeem] ✅ Applied shirt to", player.Name)
     end
     
     -- 👖 Apply Pants (unchanged)
@@ -200,26 +194,20 @@ local function applyClothingToPlayer(player, clothing)
         local newPants = Instance.new("Pants")
         newPants.PantsTemplate = clothing.pants.pantsTemplate
         newPants.Parent = character
-        print("[ExternalRedeem] ✅ Applied pants to", player.Name)
     end
     
     -- 🎩 Apply Accessories (FIXED LOGIC)
     if clothing.accessories and #clothing.accessories > 0 then
-        print("[ExternalRedeem] 🎩 Applying", #clothing.accessories, "accessories...")
         
         -- Remove existing accessories
         for _, accessory in pairs(character:GetChildren()) do
             if accessory:IsA("Accessory") then
-                print("[ExternalRedeem]   └─ Removing old accessory:", accessory.Name)
                 accessory:Destroy()
             end
         end
         
         -- Add new accessories
         for i, accessoryData in pairs(clothing.accessories) do
-            print("[ExternalRedeem] 🎩 Applying accessory", i, ":", accessoryData.name)
-            print("[ExternalRedeem]   └─ Handle type:", accessoryData.handleType)
-            
             local accessory = Instance.new("Accessory")
             accessory.Name = accessoryData.name
             accessory.AccessoryType = accessoryData.accessoryType or Enum.AccessoryType.Hat
@@ -236,7 +224,7 @@ local function applyClothingToPlayer(player, clothing)
                 handle.Size = accessoryData.size or Vector3.new(1, 1, 1)
                 handle.CanCollide = false
                 handle.Massless = true
-                print("[ExternalRedeem]   └─ Created MeshPart handle")
+        
                 
             elseif accessoryData.handleType == "PartWithMeshPart" then
                 -- Part with MeshPart child
@@ -255,7 +243,6 @@ local function applyClothingToPlayer(player, clothing)
                 meshPart.Massless = true
                 meshPart.Parent = handle
                 
-                print("[ExternalRedeem]   └─ Created Part with MeshPart child")
                 
             elseif accessoryData.handleType == "PartWithSpecialMesh" then
                 -- Part with SpecialMesh
@@ -275,7 +262,7 @@ local function applyClothingToPlayer(player, clothing)
                 end
                 mesh.Parent = handle
                 
-                print("[ExternalRedeem]   └─ Created Part with SpecialMesh")
+                    
                 
             else
                 -- Fallback
@@ -301,7 +288,7 @@ local function applyClothingToPlayer(player, clothing)
                     attachment.Orientation = accessoryData.attachmentOrientation
                 end
                 attachment.Parent = handle
-                print("[ExternalRedeem]   └─ Added attachment:", attachment.Name)
+                
             end
             
             -- 🔧 Add to character
@@ -487,6 +474,37 @@ local function sendRedeemRequest(code)
     return false, "Max retry attempts exceeded"
 end
 
+-- 💾 Save outfit to DataStore
+local function saveOutfit(player, clothing)
+    pcall(function()
+        OutfitDataStore:SetAsync(player.UserId, clothing)
+        print("[ExternalRedeem] 💾 Saved outfit for", player.Name)
+    end)
+end
+
+-- 📥 Load and apply saved outfit
+local function loadAndApplyOutfit(player)
+    spawn(function()
+        wait(2)
+        
+        local success, clothingData = pcall(function()
+            return OutfitDataStore:GetAsync(player.UserId)
+        end)
+        
+        if success and clothingData then
+            print("[ExternalRedeem] 📥 Found saved outfit for", player.Name, "- applying...")
+            
+            -- Decode JSON string back to table
+            local clothing = HttpService:JSONDecode(clothingData)
+            
+            applyClothingToPlayer(player, clothing)
+            print("[ExternalRedeem] ✅ Auto-applied saved outfit!")
+        else
+            print("[ExternalRedeem] No saved outfit for", player.Name)
+        end
+    end)
+end
+
 -- 🎯 Process redeem code with external API
 function ExternalRedeemService.processRedeemCode(player, code)
     print("[ExternalRedeem] Processing redeem code:", code, "for player:", player.Name)
@@ -494,46 +512,52 @@ function ExternalRedeemService.processRedeemCode(player, code)
     local success, responseData = sendRedeemRequest(code)
     
     if not success then
-        return false, responseData
+        sendRedeemNotification(player, responseData, false)
+        return false, responseData -- Return here, stop execution
     end
     
     if responseData.ok == true then
-        print("[ExternalRedeem] API approved code:", code, "applying all outfit models...")
+        print("[ExternalRedeem] API approved code:", code)
         
         local appliedSuccess, appliedItems = applyAllSkinsToPlayer(player)
         
         if appliedSuccess then
-            local message = "All outfit models applied successfully!"
-            local rewardsList = appliedItems and appliedItems or {"All Available Outfits"}
-            
-            sendRedeemNotification(player, message, true)
-            
-            if responseData.coins then
-                local leaderstats = player:FindFirstChild("leaderstats")
-                if leaderstats then
-                    local score = leaderstats:FindFirstChild("💰 Score")
-                    if score then
-                        score.Value = score.Value + responseData.coins
-                        table.insert(rewardsList, responseData.coins .. " coins")
-                        print("[ExternalRedeem] Added", responseData.coins, "coins to", player.Name)
-                    end
-                end
+            -- 💾 Save outfit after successful apply
+            local outfitModel = findOutfitModel("StarterOutfitModel")
+            if outfitModel then
+                local clothing = extractClothingFromModel(outfitModel)
+                
+                -- Fix DataStore save - convert to JSON string
+                pcall(function()
+                    local clothingData = HttpService:JSONEncode(clothing)
+                    OutfitDataStore:SetAsync(player.UserId, clothingData)
+                    print("[ExternalRedeem] 💾 Saved outfit for", player.Name)
+                end)
             end
             
-            return true, message, rewardsList
+            local message = "Outfit applied and saved!"
+            sendRedeemNotification(player, message, true)
+            
+            return true, message, appliedItems -- Return here, stop execution
         else
-            local errorMsg = "Failed to apply outfit models"
+            local errorMsg = "Failed to apply outfit"
             sendRedeemNotification(player, errorMsg, false)
-            return false, errorMsg
+            return false, errorMsg -- Return here, stop execution
         end
     else
-        -- local errorMessage = responseData.message or "Invalid redeem code"
-        -- print("[ExternalRedeem] API rejected code:", code, "reason:", errorMessage)
-        -- sendRedeemNotification(player, errorMessage, false)
-        -- return false, errorMessage
-        return false
+        local errorMessage = responseData.message or responseData.error or "Invalid code"
+        print("[ExternalRedeem] ❌ API rejected code:", code, "reason:", errorMessage)
+        sendRedeemNotification(player, errorMessage, false)
+        return false, errorMessage -- Return here, stop execution
     end
 end
+
+-- 🚀 Auto-apply on player join
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        loadAndApplyOutfit(player)
+    end)
+end)
 
 -- Global access
 _G.ExternalRedeemService = ExternalRedeemService
