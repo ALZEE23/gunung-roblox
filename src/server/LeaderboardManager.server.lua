@@ -76,6 +76,69 @@ local function saveLeaderboardData(player)
     end
 end
 
+-- 🏆 3D LEADERBOARD INTEGRATION
+local OrderedLeaderboardStore = DataStoreService:GetOrderedDataStore("PlayerLeaderboard_Ordered")
+
+-- 💾 Save to OrderedDataStore for 3D leaderboard
+local function saveToOrderedStore(player)
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if not leaderstats then return end
+    
+    local score = leaderstats:FindFirstChild("💰 Score")
+    if not score then return end
+    
+    -- Convert score untuk OrderedDataStore (logarithmic compression)
+    local storedValue = score.Value ~= 0 and math.floor(math.log(score.Value) / math.log(1.0000001)) or 0
+    
+    local success, err = pcall(function()
+        OrderedLeaderboardStore:SetAsync(player.Name, storedValue)
+    end)
+    
+    if success then
+        print("[Leaderboard] Saved", player.Name, "to OrderedDataStore - Score:", score.Value)
+    else
+        warn("[Leaderboard] Failed to save to OrderedDataStore:", err)
+    end
+end
+
+-- 📊 Get top players for 3D leaderboard
+function LeaderboardManager.getTopPlayers(count)
+    count = count or 100
+    
+    local success, result = pcall(function()
+        return OrderedLeaderboardStore:GetSortedAsync(false, count)
+    end)
+    
+    if success then
+        local page = result:GetCurrentPage()
+        local topPlayers = {}
+        
+        for rank, data in ipairs(page) do
+            local retrievedValue = data.value ~= 0 and (1.0000001 ^ data.value) or 0
+            table.insert(topPlayers, {
+                rank = rank,
+                name = data.key,
+                score = retrievedValue
+            })
+        end
+        
+        return topPlayers
+    else
+        warn("[Leaderboard] Failed to get top players:", result)
+        return {}
+    end
+end
+
+-- Save to OrderedDataStore when player leaves
+local originalPlayerRemoving = Players.PlayerRemoving:Connect(function() end)
+originalPlayerRemoving:Disconnect()
+
+Players.PlayerRemoving:Connect(function(player)
+    saveLeaderboardData(player)
+    saveToOrderedStore(player)
+end)
+
+
 -- 🎯 Update player score
 function LeaderboardManager.updateScore(player, amount)
     local leaderstats = player:FindFirstChild("leaderstats")
@@ -84,6 +147,9 @@ function LeaderboardManager.updateScore(player, amount)
         if score then
             score.Value = score.Value + amount
             print("[Leaderboard] Updated", player.Name, "score to:", score.Value, "(+" .. amount .. ")")
+            
+            -- 🔧 Auto-save to OrderedDataStore
+            saveToOrderedStore(player)
         else
             warn("[Leaderboard] Score stat not found for", player.Name)
         end
@@ -146,3 +212,4 @@ spawn(startAutoSave)
 _G.LeaderboardManager = LeaderboardManager
 
 print("[LeaderboardManager] Leaderboard system with DataStore initialized!")
+print("[LeaderboardManager] 3D Leaderboard integration added!")
