@@ -118,62 +118,43 @@ if not ExternalRedeemService then
     warn("[RedeemManager] ❌ Check if ExternalRedeemService.server.lua is running!")
 end
 
--- Handle requests with enhanced debugging
+-- 🔧 SINGLE CONNECTION - Handle external redeem code input
 RedeemCodeEvent.OnServerEvent:Connect(function(player, code)
-    print("[RedeemManager] 📨 SERVER RECEIVED REQUEST from", player.Name, "code:", code)
-    print("[RedeemManager] 🔍 ExternalRedeemService exists:", ExternalRedeemService ~= nil)
-    
-    if not ExternalRedeemService then
-        warn("[RedeemManager] ❌ ExternalRedeemService is nil - sending error response")
-        RedeemCodeResponseEvent:FireClient(player, false, "ExternalRedeemService not available")
-        return
-    end
-    
-    print("[RedeemManager] 🔍 processRedeemCode function exists:", ExternalRedeemService.processRedeemCode ~= nil)
-    
-    if not ExternalRedeemService.processRedeemCode then
-        warn("[RedeemManager] ❌ processRedeemCode function missing")
-        RedeemCodeResponseEvent:FireClient(player, false, "processRedeemCode function not found")
-        return
-    end
-    
-    print("[RedeemManager] 🚀 CALLING ExternalRedeemService.processRedeemCode...")
-    
-    local success, result = pcall(function()
-        return ExternalRedeemService.processRedeemCode(player, code)
-    end)
-    
-    print("[RedeemManager] 📊 processRedeemCode finished - success:", success)
-    
-    if success then
-        print("[RedeemManager] 📊 Result:", result)
-        -- Send response
-        RedeemCodeResponseEvent:FireClient(player, result, "Processed", {})
-    else
-        warn("[RedeemManager] ❌ processRedeemCode ERROR:", result)
-        RedeemCodeResponseEvent:FireClient(player, false, "Error: " .. tostring(result))
-    end
-end)
-
-print("[RedeemManager] ✅ RedeemManager initialized and listening...")
-
--- 🌐 Handle external redeem code input
-RedeemCodeEvent.OnServerEvent:Connect(function(player, code)
-    print("[RedeemManager] External redeem request from", player.Name, "for code:", code)
+    print("[RedeemManager] 📨 External redeem request from", player.Name, "for code:", code)
     
     -- Use ExternalRedeemService if available
-    if _G.ExternalRedeemService then
-        local success, message, rewards = _G.ExternalRedeemService.processRedeemCode(player, code)
+    if ExternalRedeemService and ExternalRedeemService.processRedeemCode then
+        print("[RedeemManager] 🚀 Calling ExternalRedeemService.processRedeemCode...")
         
-        -- Send response back to client
-        RedeemCodeResponseEvent:FireClient(player, success, message, rewards)
+        local success, result = pcall(function()
+            return ExternalRedeemService.processRedeemCode(player, code)
+        end)
         
-        print("[RedeemManager] Sent external redeem response to", player.Name, "- Success:", success)
+        if success then
+            local redeemSuccess, message, rewards = result, nil, {}
+            
+            -- Handle multiple return values
+            if type(result) == "boolean" then
+                redeemSuccess = result
+            end
+            
+            print("[RedeemManager] 📊 Redeem result - Success:", redeemSuccess)
+            
+            -- Send response back to client (ONLY ONCE!)
+            RedeemCodeResponseEvent:FireClient(player, redeemSuccess, message or "Processed", rewards or {})
+            
+            print("[RedeemManager] ✅ Sent response to", player.Name)
+        else
+            warn("[RedeemManager] ❌ Error calling processRedeemCode:", result)
+            RedeemCodeResponseEvent:FireClient(player, false, "Error: " .. tostring(result))
+        end
     else
-        warn("[RedeemManager] ExternalRedeemService not found!")
+        warn("[RedeemManager] ❌ ExternalRedeemService not available!")
         RedeemCodeResponseEvent:FireClient(player, false, "External redeem service not available")
     end
 end)
+
+print("[RedeemManager] ✅ RedeemManager initialized with SINGLE connection")
 
 -- 🔍 Find model in workspace or ServerStorage
 local function findOutfitModel(modelName)
